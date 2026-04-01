@@ -1,0 +1,14 @@
+{
+"type": "FeatureCollection",
+"name": "Titik_Sektor",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "Id": 0, "POS": "Pos Induk PBK Bantul", "Nama": "Sektor Bantul" }, "geometry": { "type": "Point", "coordinates": [ 110.321384687433593, -7.899146875347546 ] } },
+{ "type": "Feature", "properties": { "Id": 0, "POS": "Pos 3 PBK Imogiri", "Nama": "Sektor Imogiri" }, "geometry": { "type": "Point", "coordinates": [ 110.385659036896314, -7.909090662541713 ] } },
+{ "type": "Feature", "properties": { "Id": 0, "POS": "Pos 1 PBK Kasihan", "Nama": "Sektor Kasihan" }, "geometry": { "type": "Point", "coordinates": [ 110.335642824122715, -7.829541530134589 ] } },
+{ "type": "Feature", "properties": { "Id": 0, "POS": "Pos 2 PBK Banguntapan", "Nama": "Sektor Banguntapan" }, "geometry": { "type": "Point", "coordinates": [ 110.417979508257815, -7.82941187481327 ] } },
+{ "type": "Feature", "properties": { "Id": 0, "POS": "Pos 5 PBK Pundong", "Nama": "Sektor Pundong" }, "geometry": { "type": "Point", "coordinates": [ 110.344, -7.957486 ] } },
+{ "type": "Feature", "properties": { "Id": 0, "POS": "Pos 4 PBK Sedayu", "Nama": "Sektor Sedayu" }, "geometry": { "type": "Point", "coordinates": [ 110.257, -7.816 ] } },
+{ "type": "Feature", "properties": { "Id": 0, "POS": "Pos 6 PBK Piyungan", "Nama": "Sektor Piyungan" }, "geometry": { "type": "Point", "coordinates": [ 110.466469, -7.834 ] } }
+]
+}
