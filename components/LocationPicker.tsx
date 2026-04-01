@@ -68,20 +68,42 @@ export default function LocationPicker({ onChange, initialLocation }: { onChange
     fetchGeoData();
   }, []);
 
-  const wmkStyle = {
-    color: '#00ac95',
-    weight: 2,
-    fillColor: '#00ac95',
-    fillOpacity: 0.2,
+  // Color palette for each WMK sector
+  const sektorColors: Record<string, string> = {
+    'Banguntapan': '#6366f1',
+    'Bantul': '#f59e0b',
+    'Imogiri': '#10b981',
+    'Kasihan': '#ec4899',
+    'Piyungan': '#3b82f6',
+    'Pundong': '#ef4444',
+    'Sedayu': '#8b5cf6',
   };
 
-  const onEachFeatureWmk = (feature: { properties?: { DESA?: string } }, layer: L.Layer) => {
-    if (feature.properties && feature.properties.DESA) {
-      layer.bindTooltip(feature.properties.DESA, {
-        permanent: true,
-        direction: 'center',
-        className: '!bg-transparent !border-none !shadow-none !text-white font-bold text-[10px] sm:text-xs uppercase !p-0'
-      });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const wmkStyle = (feature: any) => {
+    const sektor = feature?.properties?.Sektor || '';
+    const color = sektorColors[sektor] || '#00ac95';
+    return {
+      color: color,
+      weight: 2,
+      fillColor: color,
+      fillOpacity: 0.25,
+    };
+  };
+
+  const onEachFeatureWmk = (feature: { properties?: { DESA?: string; Sektor?: string } }, layer: L.Layer) => {
+    const desa = feature.properties?.DESA || '';
+    const sektor = feature.properties?.Sektor || '';
+    const color = sektorColors[sektor] || '#00ac95';
+    if (desa) {
+      layer.bindTooltip(
+        `<div style="text-align:center;"><span style="font-weight:700;font-size:11px;">${desa}</span><br/><span style="color:${color};font-weight:600;font-size:10px;">Sektor ${sektor}</span></div>`,
+        {
+          permanent: true,
+          direction: 'center',
+          className: '!bg-transparent !border-none !shadow-none !text-white font-bold text-[10px] sm:text-xs uppercase !p-0'
+        }
+      );
     }
   };
 

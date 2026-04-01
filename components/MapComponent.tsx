@@ -151,11 +151,27 @@ export default function MapComponent() {
     }
   };
 
-  const wmkStyle = {
-    color: '#00ac95ff',
-    weight: 2,
-    fillColor: '#00ac95ff',
-    fillOpacity: 0.2,
+  // Color palette for each WMK sector
+  const sektorColors: Record<string, string> = {
+    'Banguntapan': '#6366f1', // Indigo
+    'Bantul': '#f59e0b',      // Amber
+    'Imogiri': '#10b981',     // Emerald
+    'Kasihan': '#ec4899',     // Pink
+    'Piyungan': '#db7f15ff',    // Blue
+    'Pundong': '#ef4444',     // Red
+    'Sedayu': '#8b5cf6',      // Violet
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const wmkStyle = (feature: any) => {
+    const sektor = feature?.properties?.Sektor || '';
+    const color = sektorColors[sektor] || '#00ac95';
+    return {
+      color: color,
+      weight: 2,
+      fillColor: color,
+      fillOpacity: 0.25,
+    };
   };
 
   const sungaiStyle = {
@@ -169,14 +185,20 @@ export default function MapComponent() {
     return L.marker(latlng, { icon: posIcon });
   };
 
-  const onEachFeatureWmk = (feature: { properties?: { DESA?: string; KECAMATAN?: string } }, layer: L.Layer) => {
-    if (feature.properties && feature.properties.DESA) {
-      layer.bindTooltip(feature.properties.DESA, {
-        permanent: false,
-        direction: 'center',
-        className: 'bg-white bg-opacity-90 px-4 py-2 rounded shadow-md text-base uppercase font-semibold'
-      });
-    } else if (feature.properties && feature.properties.KECAMATAN) {
+  const onEachFeatureWmk = (feature: { properties?: { DESA?: string; KECAMATAN?: string; Sektor?: string } }, layer: L.Layer) => {
+    const desa = feature.properties?.DESA || '';
+    const sektor = feature.properties?.Sektor || '';
+    const color = sektorColors[sektor] || '#00ac95';
+    if (desa) {
+      layer.bindTooltip(
+        `<div style="text-align:center;"><span style="font-weight:700;font-size:13px;">${desa}</span><br/><span style="color:${color};font-weight:600;font-size:11px;">Sektor ${sektor}</span></div>`,
+        {
+          permanent: false,
+          direction: 'center',
+          className: 'bg-white bg-opacity-90 px-4 py-2 rounded-lg shadow-md'
+        }
+      );
+    } else if (feature.properties?.KECAMATAN) {
       layer.bindTooltip(feature.properties.KECAMATAN, {
         permanent: false,
         direction: 'center',
@@ -287,7 +309,7 @@ export default function MapComponent() {
       </MapContainer>
 
       <div className="absolute bottom-6 right-6 z-[1000] flex flex-col gap-3 items-end">
-        <div className="bg-white/95 backdrop-blur-sm px-4 py-3 rounded-2xl shadow-lg border border-slate-100 flex flex-col gap-2 pointer-events-auto">
+        <div className="bg-white/95 backdrop-blur-sm px-4 py-3 rounded-2xl shadow-lg border border-slate-100 flex flex-col gap-2 pointer-events-auto max-h-[60vh] overflow-y-auto">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Legenda Peta</p>
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -304,6 +326,14 @@ export default function MapComponent() {
             <img src="/icon/pos.svg" alt="Pos Sektor" className="w-5 h-5 drop-shadow-sm" />
             <span className="text-xs font-semibold text-slate-700">Pos Sektor</span>
           </div>
+          <div className="border-t border-slate-200 my-1"></div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Sektor WMK</p>
+          {Object.entries(sektorColors).map(([sektor, color]) => (
+            <div key={sektor} className="flex items-center gap-3">
+              <span className="w-4 h-4 rounded-sm border border-slate-200 flex-shrink-0" style={{ backgroundColor: color, opacity: 0.7 }}></span>
+              <span className="text-xs font-semibold text-slate-700">{sektor}</span>
+            </div>
+          ))}
         </div>
 
         <button
