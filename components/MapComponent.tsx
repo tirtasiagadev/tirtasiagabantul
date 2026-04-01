@@ -3,11 +3,11 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap, GeoJSON, LayersControl } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { TitikAir } from '@/types/database'
 import Link from 'next/link'
-import { Navigation, Locate } from 'lucide-react'
+import { Navigation, Locate, ChevronUp, ChevronDown, Map } from 'lucide-react'
 
 // Fix default icon issue with Leaflet in React
 const customIcon = new L.Icon({
@@ -70,9 +70,11 @@ export default function MapComponent() {
   const [sungaiData, setSungaiData] = useState<any>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [titikData, setTitikData] = useState<any>(null)
+  const [legendOpen, setLegendOpen] = useState(false)
   const markerRefs = useRef<{ [key: string]: L.Marker | null }>({})
 
   useEffect(() => {
+    // Critical path: fetch markers data and user location first
     async function fetchTitik() {
       try {
         const { data } = await supabase.from('titik_air').select('*')
@@ -83,26 +85,39 @@ export default function MapComponent() {
     }
     fetchTitik()
 
-    async function fetchGeoData() {
-      try {
-        const [wmkRes, sungaiRes, titikRes] = await Promise.all([
-          fetch('/data/WMK_Sektor_Per_Kalurahan.geojson'),
-          fetch('/data/Sungai.geojson'),
-          fetch('/data/Titik_Sektor.geojson')
-        ]);
-        setWmkData(await wmkRes.json());
-        setSungaiData(await sungaiRes.json());
-        setTitikData(await titikRes.json());
-      } catch (err) {
-        console.error('Failed to load geojson', err)
-      }
-    }
-    fetchGeoData()
-
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition((position) => {
         setUserLocation([position.coords.latitude, position.coords.longitude])
       })
+    }
+  }, [])
+
+  useEffect(() => {
+    // Deferred: load heavy GeoJSON overlays after initial paint
+    const loadGeo = () => {
+      async function fetchGeoData() {
+        try {
+          // Load smallest first (Titik ~4KB), then Sungai (~380KB), then WMK (~844KB)
+          const titikRes = await fetch('/data/Titik_Sektor.geojson');
+          setTitikData(await titikRes.json());
+
+          const sungaiRes = await fetch('/data/Sungai.geojson');
+          setSungaiData(await sungaiRes.json());
+
+          const wmkRes = await fetch('/data/WMK_Sektor_Per_Kalurahan.geojson');
+          setWmkData(await wmkRes.json());
+        } catch (err) {
+          console.error('Failed to load geojson', err)
+        }
+      }
+      fetchGeoData()
+    };
+
+    // Use requestIdleCallback to defer GeoJSON loading until browser is idle
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(loadGeo, { timeout: 2000 });
+    } else {
+      setTimeout(loadGeo, 500);
     }
   }, [])
 
@@ -151,15 +166,15 @@ export default function MapComponent() {
     }
   };
 
-  // Color palette for each WMK sector
+  // Color palette for each WMK sector — maximally contrasting
   const sektorColors: Record<string, string> = {
-    'Banguntapan': '#6366f1', // Indigo
-    'Bantul': '#f59e0b',      // Amber
-    'Imogiri': '#10b981',     // Emerald
-    'Kasihan': '#ec4899',     // Pink
-    'Piyungan': '#db7f15ff',    // Blue
-    'Pundong': '#ef4444',     // Red
-    'Sedayu': '#8b5cf6',      // Violet
+    'Banguntapan': '#e6194b', // Crimson Red
+    'Bantul': '#3cb44b',      // Green
+    'Imogiri': '#2856ffff',     // Royal Blue
+    'Kasihan': '#f58231',     // Orange
+    'Piyungan': '#911eb4',    // Purple
+    'Pundong': '#c3ff00ff',     // Cyan
+    'Sedayu': '#ff00e1ff',      // Magenta
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -308,48 +323,61 @@ export default function MapComponent() {
         )}
       </MapContainer>
 
-      <div className="absolute bottom-6 right-6 z-[1000] flex flex-col gap-3 items-end">
-        <div className="bg-white/95 backdrop-blur-sm px-4 py-3 rounded-2xl shadow-lg border border-slate-100 flex flex-col gap-2 pointer-events-auto max-h-[60vh] overflow-y-auto">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Legenda Peta</p>
-          <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon/user.svg" alt="Lokasi Anda" className="w-5 h-5 drop-shadow-sm" />
-            <span className="text-xs font-semibold text-slate-700">Lokasi Anda</span>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon/titikair.svg" alt="Sumber Air" className="w-5 h-5 drop-shadow-sm" />
-            <span className="text-xs font-semibold text-slate-700">Sumber Air</span>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon/pos.svg" alt="Pos Sektor" className="w-5 h-5 drop-shadow-sm" />
-            <span className="text-xs font-semibold text-slate-700">Pos Sektor</span>
-          </div>
-          <div className="border-t border-slate-200 my-1"></div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Sektor WMK</p>
-          {Object.entries(sektorColors).map(([sektor, color]) => (
-            <div key={sektor} className="flex items-center gap-3">
-              <span className="w-4 h-4 rounded-sm border border-slate-200 flex-shrink-0" style={{ backgroundColor: color, opacity: 0.7 }}></span>
-              <span className="text-xs font-semibold text-slate-700">{sektor}</span>
+      <div className="absolute bottom-4 right-4 z-[1000] flex flex-col gap-2 items-end">
+        {/* Collapsible Legend */}
+        <div className="pointer-events-auto">
+          <button
+            onClick={() => setLegendOpen(!legendOpen)}
+            className="bg-white/95 backdrop-blur-sm w-9 h-9 rounded-full shadow-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:text-blue-600 transition"
+            title="Legenda Peta"
+          >
+            {legendOpen ? <ChevronDown className="w-4 h-4" /> : <Map className="w-4 h-4" />}
+          </button>
+          {legendOpen && (
+            <div className="bg-white/95 backdrop-blur-sm px-3 py-2.5 rounded-xl shadow-lg border border-slate-100 flex flex-col gap-1.5 mt-2 max-h-[50vh] overflow-y-auto w-[160px]">
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Legenda</p>
+              <div className="flex items-center gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icon/user.svg" alt="Lokasi Anda" className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-medium text-slate-600">Lokasi Anda</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icon/titikair.svg" alt="Sumber Air" className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-medium text-slate-600">Sumber Air</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icon/pos.svg" alt="Pos Sektor" className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-medium text-slate-600">Pos Sektor</span>
+              </div>
+              <div className="border-t border-slate-200 my-0.5"></div>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Sektor WMK</p>
+              {Object.entries(sektorColors).map(([sektor, color]) => (
+                <div key={sektor} className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: color }}></span>
+                  <span className="text-[10px] font-medium text-slate-600">{sektor}</span>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
 
+        {/* Icon-only action buttons */}
         <button
           onClick={handleLocateMe}
-          className="bg-white text-slate-700 hover:text-blue-600 px-4 py-3 rounded-full shadow-lg flex items-center gap-2 font-medium transition transform hover:scale-105"
+          className="bg-white w-9 h-9 rounded-full shadow-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:text-blue-600 transition hover:scale-105"
+          title="Lokasi Saya"
         >
-          <Locate className="w-5 h-5" />
-          Lokasi Saya
+          <Locate className="w-4 h-4" />
         </button>
         {userLocation && (
           <button
             onClick={findNearest}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-full shadow-lg flex items-center gap-2 font-medium transition transform hover:scale-105"
+            className="bg-blue-600 hover:bg-blue-700 w-9 h-9 rounded-full shadow-lg flex items-center justify-center text-white transition hover:scale-105"
+            title="Cari Titik Air Terdekat"
           >
-            <Navigation className="w-5 h-5" />
-            Cari Titik Air Terdekat
+            <Navigation className="w-4 h-4" />
           </button>
         )}
       </div>

@@ -68,15 +68,15 @@ export default function LocationPicker({ onChange, initialLocation }: { onChange
     fetchGeoData();
   }, []);
 
-  // Color palette for each WMK sector
+  // Color palette for each WMK sector — maximally contrasting
   const sektorColors: Record<string, string> = {
-    'Banguntapan': '#6366f1',
-    'Bantul': '#f59e0b',
-    'Imogiri': '#10b981',
-    'Kasihan': '#ec4899',
-    'Piyungan': '#3b82f6',
-    'Pundong': '#ef4444',
-    'Sedayu': '#8b5cf6',
+    'Banguntapan': '#e6194b',
+    'Bantul': '#3cb44b',
+    'Imogiri': '#4363d8',
+    'Kasihan': '#f58231',
+    'Piyungan': '#911eb4',
+    'Pundong': '#42d4f4',
+    'Sedayu': '#f032e6',
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
