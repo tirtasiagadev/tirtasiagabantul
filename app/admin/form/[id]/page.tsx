@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { TitikAir } from '@/types/database'
 import dynamic from 'next/dynamic'
-import { ArrowLeft, Save, Upload, MapPin } from 'lucide-react'
+import { ArrowLeft, Save, Upload, MapPin, X } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 const LocationPickerWithNoSSR = dynamic(
   () => import('@/components/LocationPicker'),
@@ -33,7 +34,62 @@ export default function FormTitikAir(props: { params: Promise<{ id: string }> })
   const [initialLoc, setInitialLoc] = useState<[number, number] | null>(null)
   
   const [fileToUpload, setFileToUpload] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (fileToUpload) {
+      const url = URL.createObjectURL(fileToUpload)
+      setPreviewUrl(url)
+      return () => URL.revokeObjectURL(url)
+    } else {
+      setPreviewUrl(null)
+    }
+  }, [fileToUpload])
+
+  const [inputLat, setInputLat] = useState<string>('');
+  const [inputLng, setInputLng] = useState<string>('');
+
+  useEffect(() => {
+    if (formData.latitude !== null && formData.latitude !== undefined) {
+      if (parseFloat(inputLat) !== formData.latitude) {
+        setInputLat(formData.latitude.toString());
+      }
+    } else {
+      setInputLat('');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.latitude]);
+
+  useEffect(() => {
+    if (formData.longitude !== null && formData.longitude !== undefined) {
+      if (parseFloat(inputLng) !== formData.longitude) {
+        setInputLng(formData.longitude.toString());
+      }
+    } else {
+      setInputLng('');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.longitude]);
+
+  const handleManualLatChange = (val: string) => {
+    setInputLat(val);
+    const num = parseFloat(val);
+    if (!isNaN(num)) {
+      setFormData(prev => ({...prev, latitude: num}));
+    } else if (val === '' || val === '-') {
+      setFormData(prev => ({...prev, latitude: null}));
+    }
+  };
+
+  const handleManualLngChange = (val: string) => {
+    setInputLng(val);
+    const num = parseFloat(val);
+    if (!isNaN(num)) {
+      setFormData(prev => ({...prev, longitude: num}));
+    } else if (val === '' || val === '-') {
+      setFormData(prev => ({...prev, longitude: null}));
+    }
+  };
   useEffect(() => {
     if (!isNew) {
       async function fetchTitik() {
@@ -58,7 +114,7 @@ export default function FormTitikAir(props: { params: Promise<{ id: string }> })
       const reader = new FileReader()
       reader.readAsDataURL(file)
       reader.onload = (event) => {
-        const img = new Image()
+        const img = new window.Image()
         img.src = event.target?.result as string
         img.onload = () => {
           const canvas = document.createElement('canvas')
@@ -190,27 +246,68 @@ export default function FormTitikAir(props: { params: Promise<{ id: string }> })
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-4">
                 <label className="block text-sm font-semibold text-slate-700">Foto Lokasi</label>
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 text-blue-600 rounded-xl cursor-pointer hover:bg-blue-100 transition border border-blue-100 font-semibold w-full text-center">
-                    <Upload className="w-5 h-5" />
-                    Upload Foto Baru (Dioptimasi)
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setFileToUpload(e.target.files[0])
-                        }
+                
+                {/* Image Preview Area */}
+                <div className="relative w-full h-48 sm:h-56 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 overflow-hidden group flex items-center justify-center">
+                  {(previewUrl || formData.foto_lokasi) ? (
+                    <>
+                      <Image 
+                        src={previewUrl || formData.foto_lokasi || ''} 
+                        alt="Preview lokasi" 
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                        <span className="text-white font-medium px-3 py-1.5 bg-black/50 rounded-lg backdrop-blur-sm">Ganti Foto</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-slate-400 gap-2 pointer-events-none">
+                      <Upload className="w-8 h-8 opacity-50" />
+                      <span className="text-sm font-medium">Belum ada foto</span>
+                    </div>
+                  )}
+                  
+                  {/* Invisible file input that covers the preview box so clicking anywhere triggers upload */}
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setFileToUpload(e.target.files[0]);
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                    title="Klik untuk memilih foto"
+                  />
+                  
+                  {/* Remove Photo Button */}
+                  {(previewUrl || formData.foto_lokasi) && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setFileToUpload(null);
+                        setPreviewUrl(null);
+                        setFormData({...formData, foto_lokasi: null});
                       }}
-                      className="hidden" 
-                    />
-                  </label>
+                      className="absolute top-2 right-2 z-20 p-1.5 bg-white/90 text-red-600 rounded-lg shadow-sm hover:bg-red-50 hover:text-red-700 backdrop-blur-sm transition pointer-events-auto"
+                      title="Hapus foto"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
-                {fileToUpload && <p className="text-sm font-medium text-slate-700 mt-2">Siap diupload: <span className="text-slate-500">{fileToUpload.name}</span></p>}
-                {!fileToUpload && formData.foto_lokasi && (
-                  <p className="text-sm font-medium text-slate-500 mt-2 truncate max-w-[200px] sm:max-w-xs" title={formData.foto_lokasi}>Foto saat ini: {formData.foto_lokasi}</p>
+                
+                {fileToUpload && (
+                  <p className="text-xs font-medium text-green-600 flex items-center gap-1.5">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                    Siap diupload: {fileToUpload.name}
+                  </p>
                 )}
               </div>
             </div>
@@ -220,10 +317,33 @@ export default function FormTitikAir(props: { params: Promise<{ id: string }> })
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                 <MapPin className="w-5 h-5 text-red-500" />
-                Pilih Titik Lokasi Peta
+                Pilih Titik Lokasi Peta (Bisa diklik di peta atau masukkan manual)
               </label>
               <div className="text-xs px-3 py-1.5 bg-slate-100 rounded-lg text-slate-600 font-medium inline-block w-fit">
                 {formData.latitude ? `${formData.latitude.toFixed(5)}, ${formData.longitude?.toFixed(5)}` : 'Belum Dipilih'}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-600">Latitude</label>
+                <input 
+                  type="text" 
+                  value={inputLat}
+                  onChange={e => handleManualLatChange(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition text-slate-800 placeholder-slate-400 text-sm"
+                  placeholder="Contoh: -7.8860"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-600">Longitude</label>
+                <input 
+                  type="text" 
+                  value={inputLng}
+                  onChange={e => handleManualLngChange(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition text-slate-800 placeholder-slate-400 text-sm"
+                  placeholder="Contoh: 110.3298"
+                />
               </div>
             </div>
             
@@ -233,6 +353,7 @@ export default function FormTitikAir(props: { params: Promise<{ id: string }> })
                 key={initialLoc ? `${initialLoc[0]}-${initialLoc[1]}` : 'new-loc'}
                 onChange={handleLocationChange} 
                 initialLocation={initialLoc} 
+                positionValue={formData.latitude !== null && formData.latitude !== undefined && formData.longitude !== null && formData.longitude !== undefined ? [formData.latitude, formData.longitude] : null}
               />
             )}
           </div>

@@ -38,9 +38,21 @@ function LocationMarker({ position, setPosition }: { position: [number, number] 
   )
 }
 
-export default function LocationPicker({ onChange, initialLocation }: { onChange: (lat: number, lng: number) => void, initialLocation: [number, number] | null }) {
-  const [position, setPosition] = useState<[number, number] | null>(initialLocation)
-  const [focusLocation, setFocusLocation] = useState<[number, number] | null>(null)
+export default function LocationPicker({ onChange, initialLocation, positionValue }: { onChange: (lat: number, lng: number) => void, initialLocation: [number, number] | null, positionValue?: [number, number] | null }) {
+  const [position, setPosition] = useState<[number, number] | null>(positionValue || initialLocation)
+  const [focusLocation, setFocusLocation] = useState<[number, number] | null>(positionValue || initialLocation)
+
+  useEffect(() => {
+    if (positionValue !== undefined && positionValue !== null) {
+      setPosition((prev) => {
+        if (!prev || prev[0] !== positionValue[0] || prev[1] !== positionValue[1]) {
+          setFocusLocation(positionValue);
+          return positionValue;
+        }
+        return prev;
+      });
+    }
+  }, [positionValue ? positionValue[0] : null, positionValue ? positionValue[1] : null]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [wmkData, setWmkData] = useState<any>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

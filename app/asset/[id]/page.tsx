@@ -38,6 +38,7 @@ export default async function DetaiAssetPage({ params }: { params: Promise<{ id:
                 className="w-full h-full object-cover"
                 width={800}
                 height={600}
+                unoptimized
               />
             ) : (
               <div className="flex items-center justify-center h-full text-slate-400 flex-col gap-2">
